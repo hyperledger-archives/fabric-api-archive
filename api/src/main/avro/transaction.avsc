@@ -1,0 +1,10 @@
+{
+    "namespace": "org.hyperledger.transaction",
+    "type": "record",
+    "name": "SerializedTransaction",
+    "fields": [
+        { "name": "inputs",     "type": { "type": "array", "items": "bytes" }},
+        { "name": "outputs",    "type": { "type": "array", "items": "bytes" }},
+        { "name": "endorsers",  "type": { "type": "array", "items": "bytes" }}
+    ]
+}

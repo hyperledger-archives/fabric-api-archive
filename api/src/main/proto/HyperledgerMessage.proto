@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package org.hyperledger.api;
+
+// a transaction.
+message TX {
+    bytes content = 1;
+}
+
+message Hash {
+    repeated bytes hash = 1;
+}
+
+message EmptyResult {
+}
+
+service BlockchainApi {
+    // APITransaction getTransaction(TID hash) throws BCSAPIException;
+    rpc GetTransaction(Hash) returns (TX);
+
+    // void sendTransaction(Transaction transaction) throws BCSAPIException;
+    rpc SendTransaction(TX) returns (EmptyResult);
+
+    // void registerTransactionListener(TransactionListener listener) throws BCSAPIException;
+    // Hash is the hashcode which identifies the listener
+    rpc RegisterTransactionListener(Hash) returns (EmptyResult);
+
+    // public void removeTransactionListener(TransactionListener listener);
+    // Hash is the hashcode which identifies the listener
+    rpc RemoveTransactionListener(Hash) returns (EmptyResult);
+}
+

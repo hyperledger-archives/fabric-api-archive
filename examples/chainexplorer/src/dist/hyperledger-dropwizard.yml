@@ -1,0 +1,29 @@
+server:
+    type: simple
+    applicationContextPath: /
+logging:
+  level: DEBUG
+type: "grpc"
+hyperLedger:
+  embedded:
+    blockchain:
+      chain: "regtest"
+
+    network:
+      outgoingConnections: 1
+      discovery:
+      - type: fixed
+        peers: ["127.0.0.1:18444"]
+
+    store:
+      memory: true
+
+    mining:
+      enabled: true
+      __comment__: "address generated for private key: Kxj5wXRXPxVZScsHkK6Dwo2k7enphcW9wWidvZ93wTALHDXjDo2U"
+      minerAddress: "1CNABTVtwxFQBTvazuGfxhT87sfssmFbdE"
+      delayBetweenMiningBlocksSecs: 30
+gRPCConnectedHyperLedger:
+  grpc:
+    ip: "127.0.0.1"
+
