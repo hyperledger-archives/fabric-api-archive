@@ -34,11 +34,10 @@ import protos.Chaincode.ChaincodeID;
 import protos.Chaincode.ChaincodeInput;
 import protos.Chaincode.ChaincodeInvocationSpec;
 import protos.Chaincode.ChaincodeSpec;
-import protos.DevopsGrpc;
-import protos.DevopsGrpc.DevopsBlockingStub;
 import protos.Fabric;
 import protos.OpenchainGrpc;
 import protos.OpenchainGrpc.OpenchainBlockingStub;
+import protos.PeerGrpc;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -48,27 +47,30 @@ import java.util.stream.Collectors;
 
 public class GRPCClient implements HLAPI {
     private static final Logger log = LoggerFactory.getLogger(GRPCClient.class);
-    private final GRPCObserver observer;
-    private DevopsBlockingStub dbs;
+    private static String NOT_FOUND = "ledger: resource not found";    private final GRPCObserver observer;
+
     private OpenchainBlockingStub obs;
+    private PeerGrpc.PeerBlockingStub pbs;
 
     public GRPCClient(String host, int port, int observerPort) {
         log.debug("Trying to connect to GRPC host:port={}:{}, host:observerPort={}:{}, ", host, port, observerPort);
         ManagedChannel channel = NettyChannelBuilder.forAddress(host, port).negotiationType(NegotiationType.PLAINTEXT).build();
         ManagedChannel observerChannel = NettyChannelBuilder.forAddress(host, observerPort).negotiationType(NegotiationType.PLAINTEXT).build();
-        dbs = DevopsGrpc.newBlockingStub(channel);
+        pbs = PeerGrpc.newBlockingStub(channel);
         obs = OpenchainGrpc.newBlockingStub(channel);
         observer = new GRPCObserver(observerChannel);
         observer.connect();
     }
 
-    private void invoke(byte[] transaction) {
+    private void invoke(Transaction transaction) {
+        byte[] t = transaction.toByteArray();
+        log.debug("Sending transaction of size {}", t.length);
         ChaincodeID.Builder chaincodeId = ChaincodeID.newBuilder();
         chaincodeId.setName(Transaction.chaincodeName);
 
         ChaincodeInput.Builder chaincodeInput = ChaincodeInput.newBuilder();
         chaincodeInput.addArgs(ByteString.copyFromUtf8(Transaction.txCreatorChaincodeFunction));
-        chaincodeInput.addArgs(ByteString.copyFrom(transaction));
+        chaincodeInput.addArgs(ByteString.copyFrom(t));
 
         ChaincodeSpec.Builder chaincodeSpec = ChaincodeSpec.newBuilder();
         chaincodeSpec.setChaincodeID(chaincodeId);
@@ -77,7 +79,11 @@ public class GRPCClient implements HLAPI {
         ChaincodeInvocationSpec.Builder chaincodeInvocationSpec = ChaincodeInvocationSpec.newBuilder();
         chaincodeInvocationSpec.setChaincodeSpec(chaincodeSpec).setIdGenerationAlg("sha256");
 
-        dbs.invoke(chaincodeInvocationSpec.build());
+        Fabric.Transaction.Builder tb = Fabric.Transaction.newBuilder();
+        tb.setType(Fabric.Transaction.Type.CHAINCODE_INVOKE);
+        tb.setTxid(transaction.getID().toString());
+        tb.setPayload(chaincodeInvocationSpec.build().toByteString());
+        pbs.processTransaction(tb.build());
     }
 
     private ByteString query(String functionName, Collection<String> args) {
@@ -87,23 +93,22 @@ public class GRPCClient implements HLAPI {
         Chaincode.ChaincodeID chainCodeId = Chaincode.ChaincodeID.newBuilder()
                 .setName(Transaction.chaincodeName)
                 .build();
-
         Chaincode.ChaincodeInput chainCodeInput = Chaincode.ChaincodeInput.newBuilder()
                 .addArgs(ByteString.copyFromUtf8(functionName))
                 .addAllArgs(byteStringArgs)
                 .build();
 
-        Chaincode.ChaincodeSpec chaincodeSpec = Chaincode.ChaincodeSpec.newBuilder()
+        Chaincode.ChaincodeSpec.Builder chaincodeSpec = Chaincode.ChaincodeSpec.newBuilder()
                 .setChaincodeID(chainCodeId)
-                .setCtorMsg(chainCodeInput)
-                .build();
-
-        Chaincode.ChaincodeInvocationSpec chaincodeInvocationSpec = Chaincode.ChaincodeInvocationSpec.newBuilder()
-                .setChaincodeSpec(chaincodeSpec)
-                .build();
-
-        Fabric.Response response = dbs.query(chaincodeInvocationSpec);
-
+                .setCtorMsg(chainCodeInput);
+        Chaincode.ChaincodeInvocationSpec.Builder chaincodeInvocationSpec = Chaincode.ChaincodeInvocationSpec.newBuilder()
+                .setChaincodeSpec(chaincodeSpec);
+        Fabric.Transaction.Builder tb = Fabric.Transaction.newBuilder();
+        tb.setType(Fabric.Transaction.Type.CHAINCODE_QUERY);
+        tb.setPayload(chaincodeInvocationSpec.build().toByteString());
+        tb.setTxid("query-id");
+        System.out.println(chaincodeInvocationSpec.toString());
+        Fabric.Response response = pbs.processTransaction(tb.build());
         return response.getMsg();
     }
 
@@ -155,11 +160,12 @@ public class GRPCClient implements HLAPI {
             ByteString result = query("getTran", Collections.singletonList(hash.toString()));
             byte[] resultStr = result.toByteArray();
             if (resultStr.length == 0) return null;
+            if (result.toString("UTF8").contains(NOT_FOUND)) return null;
             Transaction t = Transaction.fromByteArray(resultStr);
             if (!hash.equals(t.getID())) return null;
             return new HLAPITransaction(t, BID.INVALID);
         } catch (StatusRuntimeException e) {
-            if (e.getMessage().contains("ledger: resource not found")) {
+            if (e.getMessage().contains(NOT_FOUND)) {
                 return null;
             } else {
                 throw e;
@@ -171,9 +177,7 @@ public class GRPCClient implements HLAPI {
 
     @Override
     public void sendTransaction(Transaction transaction) throws HLAPIException {
-        byte[] t = transaction.toByteArray();
-        log.debug("Sending transaction of size {}", t.length);
-        invoke(t);
+        invoke(transaction);
     }
 
     @Override
