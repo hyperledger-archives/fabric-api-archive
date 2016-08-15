@@ -15,12 +15,14 @@
  */
 package org.hyperledger.transaction;
 
+import com.google.protobuf.ByteString;
 import org.hyperledger.common.AvroSerializer;
 import org.hyperledger.common.Hash;
 import org.hyperledger.common.PublicKey;
 import org.hyperledger.merkletree.MerkleTreeNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import protos.Chaincode;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,6 +30,8 @@ import java.util.List;
 import java.util.function.Function;
 
 public class Transaction implements MerkleTreeNode {
+    public static final String chaincodeName = "noop";
+    public static final String txCreatorChaincodeFunction = "execute";
     private static final Logger log = LoggerFactory.getLogger(Transaction.class);
 
     private final TID ID;
@@ -39,7 +43,16 @@ public class Transaction implements MerkleTreeNode {
         this.inputs = inputs;
         this.outputs = outputs;
         this.endorsers = endorsers;
-        this.ID = new TID(Hash.of(toByteArray()));
+
+        this.ID = new TID(Hash.of(fabricInvocationForm()));
+    }
+
+    private byte[] fabricInvocationForm() {
+        Chaincode.ChaincodeInput.Builder chaincodeInput = Chaincode.ChaincodeInput.newBuilder();
+        chaincodeInput.addArgs(ByteString.copyFromUtf8(txCreatorChaincodeFunction));
+        chaincodeInput.addArgs(ByteString.copyFrom(toByteArray()));
+        ByteBuffer buffer = ByteBuffer.wrap(chaincodeInput.build().toByteArray());
+        return chaincodeInput.build().toByteArray();
     }
 
     protected Transaction(Transaction t) {

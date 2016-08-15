@@ -24,6 +24,7 @@ import org.hyperledger.block.Header;
 import org.hyperledger.block.HyperledgerHeader;
 import org.hyperledger.merkletree.MerkleRoot;
 import org.hyperledger.merkletree.MerkleTree;
+import org.hyperledger.transaction.Endorser;
 import org.hyperledger.transaction.TID;
 import org.hyperledger.transaction.Transaction;
 import org.slf4j.Logger;
@@ -36,14 +37,8 @@ import protos.EventsOuterClass.Interest;
 import protos.EventsOuterClass.Register;
 import protos.Fabric;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.*;
 
 import static java.util.stream.Collectors.toList;
 
@@ -137,9 +132,11 @@ public class GRPCObserver {
         ByteString invocationSpecBytes = tx.getPayload();
         try {
             ChaincodeInvocationSpec invocationSpec = ChaincodeInvocationSpec.parseFrom(invocationSpecBytes);
-            String transactionString = invocationSpec.getChaincodeSpec().getCtorMsg().getArgs(0);
-            byte[] transactionBytes = DatatypeConverter.parseBase64Binary(transactionString);
-            return Transaction.fromByteArray(transactionBytes);
+            ByteString transactionBytes = invocationSpec.getChaincodeSpec().getCtorMsg().getArgs(1);
+            if (transactionBytes.size() == 0) {
+                return new Transaction(new ArrayList<TID>(), new ArrayList<byte[]>(), new ArrayList<Endorser>());
+            }
+            return Transaction.fromByteArray(transactionBytes.toByteArray());
         } catch (IOException e) {
             log.error("Error when processing transaction {}, {}", invocationSpecBytes, e.getMessage());
             throw new RuntimeException(e);

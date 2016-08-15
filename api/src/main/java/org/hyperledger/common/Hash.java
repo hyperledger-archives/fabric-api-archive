@@ -197,7 +197,7 @@ public class Hash {
 
     @Override
     public String toString() {
-        return ByteUtils.toHex(ByteUtils.reverse(toByteArray()));
+        return ByteUtils.toHex(toByteArray());
     }
 
     @Override
