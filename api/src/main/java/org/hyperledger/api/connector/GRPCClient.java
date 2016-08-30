@@ -69,7 +69,6 @@ public class GRPCClient implements HLAPI {
         chaincodeId.setName(Transaction.chaincodeName);
 
         ChaincodeInput.Builder chaincodeInput = ChaincodeInput.newBuilder();
-        chaincodeInput.addArgs(ByteString.copyFromUtf8(Transaction.txCreatorChaincodeFunction));
         chaincodeInput.addArgs(ByteString.copyFrom(t));
 
         ChaincodeSpec.Builder chaincodeSpec = ChaincodeSpec.newBuilder();
@@ -107,7 +106,6 @@ public class GRPCClient implements HLAPI {
         tb.setType(Fabric.Transaction.Type.CHAINCODE_QUERY);
         tb.setPayload(chaincodeInvocationSpec.build().toByteString());
         tb.setTxid("query-id");
-        System.out.println(chaincodeInvocationSpec.toString());
         Fabric.Response response = pbs.processTransaction(tb.build());
         return response.getMsg();
     }

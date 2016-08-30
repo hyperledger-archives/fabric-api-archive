@@ -91,7 +91,7 @@ public class GRPCObserver {
 
     private Event createRegisterMessage() {
         Interest.Builder blockInterest = Interest.newBuilder().setEventType(EventType.BLOCK);
-        Interest.Builder rejectionInterest = Interest.newBuilder().setEventType(EventType.BLOCK);
+        Interest.Builder rejectionInterest = Interest.newBuilder().setEventType(EventType.REJECTION);
 
         Register.Builder register = Register.newBuilder()
                 .addEvents(blockInterest)
@@ -132,7 +132,7 @@ public class GRPCObserver {
         ByteString invocationSpecBytes = tx.getPayload();
         try {
             ChaincodeInvocationSpec invocationSpec = ChaincodeInvocationSpec.parseFrom(invocationSpecBytes);
-            ByteString transactionBytes = invocationSpec.getChaincodeSpec().getCtorMsg().getArgs(1);
+            ByteString transactionBytes = invocationSpec.getChaincodeSpec().getCtorMsg().getArgs(0);
             if (transactionBytes.size() == 0) {
                 return new Transaction(new ArrayList<TID>(), new ArrayList<byte[]>(), new ArrayList<Endorser>());
             }

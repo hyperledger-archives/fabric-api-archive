@@ -51,7 +51,6 @@ public class Transaction implements MerkleTreeNode {
         Chaincode.ChaincodeInput.Builder chaincodeInput = Chaincode.ChaincodeInput.newBuilder();
         chaincodeInput.addArgs(ByteString.copyFromUtf8(txCreatorChaincodeFunction));
         chaincodeInput.addArgs(ByteString.copyFrom(toByteArray()));
-        ByteBuffer buffer = ByteBuffer.wrap(chaincodeInput.build().toByteArray());
         return chaincodeInput.build().toByteArray();
     }
 
